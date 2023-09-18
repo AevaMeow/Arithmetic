@@ -56,10 +56,8 @@ def arithmetic_encode(source_bytes, bytes_freq):
 def decode():
     encoded_file = open('encoded', 'rb')
     encoded_data_bytes = encoded_file.read()
-    # print(encoded_data_bytes)
     original_file_length = int.from_bytes(encoded_data_bytes[0:4], 'little')
     unique_byte_count = encoded_data_bytes[4]+1
-    print(original_file_length, unique_byte_count)
     header_bytes = encoded_data_bytes[5: 5*unique_byte_count+5]
     byte_frequencies = dict()
     for i in range(unique_byte_count):
@@ -67,22 +65,17 @@ def decode():
         frequency = int.from_bytes(header_bytes[i*5+1:i*5+5], 'little')
         byte_frequencies[byte_value] = frequency
     probabilities = calculate_probabilities(byte_frequencies, original_file_length)
-    print(probabilities)
 
-
-if __name__ == "__main__":
+def encode():
     source_file = open('source', 'rb')
     input_bytes = source_file.read()
     bytes_freq = dict(Counter(input_bytes))
-    # print(bytes_freq)
     encoded_sequence = arithmetic_encode(input_bytes, bytes_freq)
-    # print(encoded_sequence)
     encoded_sequence_str = ''.join(map(str, encoded_sequence))
 
     padding_bits_count = 8 - len(encoded_sequence_str) % 8
     encoded_sequence_str += "0"*padding_bits_count
     
-    print(len(input_bytes), (len(bytes_freq.keys())-1))
     encoded_file = open('encoded','wb')
     encoded_file.write(len(input_bytes).to_bytes(4,'little'))
     encoded_file.write((len(bytes_freq.keys())-1).to_bytes(1, 'little'))
@@ -92,4 +85,7 @@ if __name__ == "__main__":
     encoded_file.close()
     source_file.close()
 
+if __name__ == "__main__":
+    
+    encode()
     decode()

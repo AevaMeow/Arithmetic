@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 from collections import Counter
 
+def find_index(sorted_list, value):
+    for i, item in enumerate(sorted_list):
+        if item >= value:
+            return i
+    return len(sorted_list)
+
 def calculate_probabilities(chars_count, len_text):
     return {ch: count / len_text for ch, count in chars_count.items()}
 
@@ -53,8 +59,62 @@ def arithmetic_encode(source_bytes, bytes_freq):
     encoded_numbers.extend([0] + [1]*straddle if lower_bound < ONE_QUARTER else [1] + [0]*straddle)
     return encoded_numbers
 
-def arithmetic_decode():
-    print(1)
+def arithmetic_decode(encoded_numbers, probability_model, text_length):
+    # диапазоны
+    BITS_PRECISION = 32
+    MAX_VALUE = 4294967295
+    THREE_QUARTERS = 3221225472
+    ONE_QUARTER = 1073741824
+    HALF = 2147483648
+
+    alphabet = list(probability_model)
+    cumulative_freq = [0]
+    for symbol_index in probability_model:
+        cumulative_freq.append(cumulative_freq[-1] + probability_model[symbol_index])
+    cumulative_freq.pop()
+
+    probability_model = list(probability_model.values())
+
+    encoded_numbers.extend(BITS_PRECISION * [0])
+    decoded_symbols = text_length * [0]
+
+    current_value = int(''.join(str(a) for a in encoded_numbers[0:BITS_PRECISION]), 2)
+    bit_position = BITS_PRECISION
+    lower_bound, upper_bound = 0, MAX_VALUE
+
+    decoded_position = 0
+    while 1:
+        current_range = upper_bound - lower_bound+1
+        symbol_index = find_index(cumulative_freq, (current_value - lower_bound) / current_range) - 1
+        decoded_symbols[decoded_position] = alphabet[symbol_index]
+
+        lower_bound = lower_bound + int(cumulative_freq[symbol_index] * current_range)
+        upper_bound = lower_bound + int(probability_model[symbol_index] * current_range)
+
+        while True:
+            if upper_bound < HALF:
+                pass
+            elif lower_bound >= HALF:
+                lower_bound = lower_bound - HALF
+                upper_bound = upper_bound - HALF
+                current_value = current_value - HALF
+            elif lower_bound >= ONE_QUARTER and upper_bound < THREE_QUARTERS:
+                lower_bound = lower_bound - ONE_QUARTER
+                upper_bound = upper_bound - ONE_QUARTER
+                current_value = current_value - ONE_QUARTER
+            else:
+                break
+            lower_bound = 2 * lower_bound
+            upper_bound = 2 * upper_bound + 1
+            current_value = 2 * current_value + encoded_numbers[bit_position]
+            bit_position += 1
+            if bit_position == len(encoded_numbers)+1:
+                break
+
+        decoded_position += 1
+        if decoded_position == text_length or bit_position == len(encoded_numbers) +1:
+            break
+    return bytes(decoded_symbols)
 
 def decode():
     encoded_file = open('encoded', 'rb')
@@ -80,7 +140,12 @@ def decode():
     padding_bits_count = int(padded_encoded_str[: 8], 2)
     encoded_sequence = padded_encoded_str[8: -padding_bits_count if padding_bits_count!=0 else None]
     encoded_sequence = [int(bit) for bit in encoded_sequence]
-    arithmetic_decode()
+    decoded_data = arithmetic_decode(encoded_sequence, probabilities, original_file_length)
+
+    decoded_file = open('decoded', 'wb')
+    decoded_file.write(decoded_data)
+
+    encoded_file.close()
     encoded_file.close()
 
     

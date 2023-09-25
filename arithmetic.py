@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from collections import Counter
+from mpmath import *
+import filecmp
 
 def find_index(sorted_list, value):
     for i, item in enumerate(sorted_list):
@@ -30,8 +32,10 @@ def arithmetic_encode(source_bytes, bytes_freq):
 
     for byte in source_bytes:
         range_width = upper_bound  - lower_bound + 1
-        lower_bound += range_width * cumulative_freq[byte]
-        upper_bound = lower_bound + range_width * probabilities[byte]
+
+        lower_bound += ceil(range_width * cumulative_freq[byte])
+        upper_bound = lower_bound + floor(range_width * probabilities[byte])
+
         temporary_numbers = []
         while True:
             if upper_bound < HALF:
@@ -88,8 +92,8 @@ def arithmetic_decode(encoded_numbers, probability_model, text_length):
         symbol_index = find_index(cumulative_freq, (current_value - lower_bound) / current_range) - 1
         decoded_symbols[decoded_position] = alphabet[symbol_index]
 
-        lower_bound = lower_bound + int(cumulative_freq[symbol_index] * current_range)
-        upper_bound = lower_bound + int(probability_model[symbol_index] * current_range)
+        lower_bound = lower_bound + ceil(cumulative_freq[symbol_index] * current_range)
+        upper_bound = lower_bound + floor(probability_model[symbol_index] * current_range)
 
         while True:
             if upper_bound < HALF:
@@ -145,7 +149,7 @@ def decode():
     decoded_file = open('decoded', 'wb')
     decoded_file.write(decoded_data)
 
-    encoded_file.close()
+    decoded_file.close()
     encoded_file.close()
 
     
@@ -182,3 +186,8 @@ if __name__ == "__main__":
     
     encode()
     decode()
+
+    if filecmp.cmp('source', 'decoded'):
+        print("Равны")
+    else:
+        print("Не равны")
